@@ -1,0 +1,13 @@
+{
+  "target": {
+    "ssh_user": "your_ssh_user",
+    "root": "/path/to/workspace"
+  },
+  "repos": [
+    {
+      "repo_name": "example_project",
+      "target_repo_path": "/packages/example_project",
+      "enabled": true
+    }
+  ]
+}

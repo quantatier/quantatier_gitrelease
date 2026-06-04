@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+
+# Runtime state and operation history.
+.qtcli_gitrelease/
+
+# Local configuration is machine-specific and must not be released.
+# Commit only reusable templates.
+config/*.json
+!config/*.example.json
+
+# Local secrets and SSH material never belong in this project.
+.env
+.env.*
+*.pem
+*.key
+id_*
+known_hosts
+ssh_config
+
+*.log
+build/
+dist/

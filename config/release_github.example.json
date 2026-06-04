@@ -1,0 +1,17 @@
+{
+  "from": {
+    "root": "/path/to/workspace"
+  },
+  "target": {
+    "github_username": "YOUR_GITHUB_USER_OR_ORG"
+  },
+  "repos": [
+    {
+      "repo_name": "example_project",
+      "from_repo_path": "/packages/example_project",
+      "target_repo_path": "git@github.com:{github_username}/example_project.git",
+      "branch": "main",
+      "enabled": true
+    }
+  ]
+}

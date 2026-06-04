@@ -1,0 +1,18 @@
+{
+  "from": {
+    "root": "/path/to/workspace"
+  },
+  "target": {
+    "ssh_user": "your_ssh_user",
+    "root": "/path/to/bare/repos"
+  },
+  "repos": [
+    {
+      "repo_name": "example_project",
+      "from_repo_path": "/packages/example_project",
+      "target_repo_path": "/packages/example_project.git",
+      "branch": "main",
+      "enabled": true
+    }
+  ]
+}

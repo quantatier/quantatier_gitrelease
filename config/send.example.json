@@ -1,0 +1,24 @@
+{
+  "from": {
+    "root": "/path/to/source/workspace"
+  },
+  "target": {
+    "ssh_user": "your_ssh_user",
+    "root": "/path/to/target/workspace"
+  },
+  "repos": [
+    {
+      "repo_name": "example_project",
+      "from_repo_path": "/packages/example_project",
+      "target_repo_path": "/packages/example_project",
+      "enabled": true,
+      "send_include_paths": [
+        "src/",
+        "tests/",
+        ".gitignore",
+        "README.md",
+        "pyproject.toml"
+      ]
+    }
+  ]
+}
