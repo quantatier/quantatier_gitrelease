@@ -8,17 +8,21 @@ from contextlib import redirect_stdout
 
 from typer.testing import CliRunner
 
-from quantatier_gitrelease.cli import app
-from quantatier_gitrelease.config import (
+from qtcli_gitrelease.cli import app
+from qtcli_gitrelease.config import (
     ensure_release_host,
     list_repos,
     load_release_config_for_target,
     load_send_config,
     resolve_release_repo,
 )
-from quantatier_gitrelease.models import RepoConfig, ResolvedRepo
-from quantatier_gitrelease.release import _build_remote_release_command, release_repo
-from quantatier_gitrelease.transfer import (
+from qtcli_gitrelease.models import RepoConfig, ResolvedRepo
+from qtcli_gitrelease.release import (
+    _bootstrap_existing_github_history,
+    _build_remote_release_command,
+    release_repo,
+)
+from qtcli_gitrelease.transfer import (
     _build_one_path_command,
     _build_record_rollback_pointer_command,
     _build_rollback_command,
@@ -64,8 +68,8 @@ class WorkflowTests(TestCase):
             },
         }
 
-        with patch("quantatier_gitrelease.cli.load_send_config", return_value=config):
-            with patch("quantatier_gitrelease.cli.run_live") as run_live:
+        with patch("qtcli_gitrelease.cli.load_send_config", return_value=config):
+            with patch("qtcli_gitrelease.cli.run_live") as run_live:
                 result = CliRunner().invoke(
                     app,
                     [
@@ -123,8 +127,8 @@ class WorkflowTests(TestCase):
             },
         }
 
-        with patch("quantatier_gitrelease.cli.load_release_config", return_value=config):
-            with patch("quantatier_gitrelease.cli.run_live") as run_live:
+        with patch("qtcli_gitrelease.cli.load_release_config", return_value=config):
+            with patch("qtcli_gitrelease.cli.run_live") as run_live:
                 result = CliRunner().invoke(
                     app,
                     [
@@ -336,7 +340,7 @@ class WorkflowTests(TestCase):
         config_dir.mkdir()
         (config_dir / "send.json").write_text('{"workspace_root": "/dev/tree"}')
 
-        with patch("quantatier_gitrelease.config.PACKAGE_CONFIG_DIR", config_dir):
+        with patch("qtcli_gitrelease.config.PACKAGE_CONFIG_DIR", config_dir):
             config = load_send_config(None)
 
         self.assertEqual("/dev/tree", config["workspace_root"])
@@ -347,7 +351,7 @@ class WorkflowTests(TestCase):
         (config_dir / "release.json").write_text('{"name": "normal"}')
         (config_dir / "release_github.json").write_text('{"name": "github"}')
 
-        with patch("quantatier_gitrelease.config.PACKAGE_CONFIG_DIR", config_dir):
+        with patch("qtcli_gitrelease.config.PACKAGE_CONFIG_DIR", config_dir):
             config = load_release_config_for_target(None, "github")
 
         self.assertEqual("github", config["name"])
@@ -363,13 +367,13 @@ class WorkflowTests(TestCase):
         )
         output = io.StringIO()
 
-        with patch("quantatier_gitrelease.release.ensure_repo_valid") as ensure_repo_valid:
-            with patch("quantatier_gitrelease.release.ensure_not_behind_or_diverged") as ensure_not_behind:
-                with patch("quantatier_gitrelease.release.read_pyproject_version", return_value="1.2.3"):
-                    with patch("quantatier_gitrelease.release.commit_if_needed") as commit:
-                        with patch("quantatier_gitrelease.release.push_branch") as push:
-                            with patch("quantatier_gitrelease.release.create_and_push_tag") as tag:
-                                with patch("quantatier_gitrelease.release.ensure_tag_not_exists") as ensure_tag:
+        with patch("qtcli_gitrelease.release.ensure_repo_valid") as ensure_repo_valid:
+            with patch("qtcli_gitrelease.release.ensure_not_behind_or_diverged") as ensure_not_behind:
+                with patch("qtcli_gitrelease.release.read_pyproject_version", return_value="1.2.3"):
+                    with patch("qtcli_gitrelease.release.commit_if_needed") as commit:
+                        with patch("qtcli_gitrelease.release.push_branch") as push:
+                            with patch("qtcli_gitrelease.release.create_and_push_tag") as tag:
+                                with patch("qtcli_gitrelease.release.ensure_tag_not_exists") as ensure_tag:
                                     with redirect_stdout(output):
                                         release_repo(repo, message="release demo", confirm=lambda: False)
 
@@ -393,13 +397,13 @@ class WorkflowTests(TestCase):
             send_include_paths=[],
         )
 
-        with patch("quantatier_gitrelease.release.ensure_repo_valid"):
-            with patch("quantatier_gitrelease.release.ensure_not_behind_or_diverged"):
-                with patch("quantatier_gitrelease.release.read_pyproject_version", return_value="1.2.3"):
-                    with patch("quantatier_gitrelease.release.ensure_tag_not_exists", side_effect=RuntimeError("tag exists")):
-                        with patch("quantatier_gitrelease.release.commit_if_needed") as commit:
-                            with patch("quantatier_gitrelease.release.push_branch") as push:
-                                with patch("quantatier_gitrelease.release.create_and_push_tag") as tag:
+        with patch("qtcli_gitrelease.release.ensure_repo_valid"):
+            with patch("qtcli_gitrelease.release.ensure_not_behind_or_diverged"):
+                with patch("qtcli_gitrelease.release.read_pyproject_version", return_value="1.2.3"):
+                    with patch("qtcli_gitrelease.release.ensure_tag_not_exists", side_effect=RuntimeError("tag exists")):
+                        with patch("qtcli_gitrelease.release.commit_if_needed") as commit:
+                            with patch("qtcli_gitrelease.release.push_branch") as push:
+                                with patch("qtcli_gitrelease.release.create_and_push_tag") as tag:
                                     with self.assertRaisesRegex(RuntimeError, "tag exists"):
                                         release_repo(repo, message="release demo", confirm=lambda: True)
 
@@ -421,16 +425,16 @@ class WorkflowTests(TestCase):
         def record_git_ssh(_repo: ResolvedRepo, *_args) -> None:
             seen_commands.append(os.environ.get("GIT_SSH_COMMAND", ""))
 
-        with patch("quantatier_gitrelease.release.read_pyproject_version", return_value="1.2.3"):
-            with patch("quantatier_gitrelease.release.ensure_repo_valid", side_effect=record_git_ssh):
-                with patch("quantatier_gitrelease.release.ensure_not_behind_or_diverged", side_effect=record_git_ssh):
-                    with patch("quantatier_gitrelease.release.ensure_tag_not_exists", side_effect=record_git_ssh):
-                        with patch("quantatier_gitrelease.release.commit_if_needed", side_effect=record_git_ssh):
-                            with patch("quantatier_gitrelease.release.push_branch", side_effect=record_git_ssh):
-                                with patch("quantatier_gitrelease.release.create_and_push_tag", side_effect=record_git_ssh):
-                                    with patch("quantatier_gitrelease.release.output", return_value="abc123"):
-                                        with patch("quantatier_gitrelease.release.append_local_history"):
-                                            with patch("quantatier_gitrelease.release.run_live") as run_live:
+        with patch("qtcli_gitrelease.release.read_pyproject_version", return_value="1.2.3"):
+            with patch("qtcli_gitrelease.release.ensure_repo_valid", side_effect=record_git_ssh):
+                with patch("qtcli_gitrelease.release.ensure_not_behind_or_diverged", side_effect=record_git_ssh):
+                    with patch("qtcli_gitrelease.release.ensure_tag_not_exists", side_effect=record_git_ssh):
+                        with patch("qtcli_gitrelease.release.commit_if_needed", side_effect=record_git_ssh):
+                            with patch("qtcli_gitrelease.release.push_branch", side_effect=record_git_ssh):
+                                with patch("qtcli_gitrelease.release.create_and_push_tag", side_effect=record_git_ssh):
+                                    with patch("qtcli_gitrelease.release.output", return_value="abc123"):
+                                        with patch("qtcli_gitrelease.release.append_local_history"):
+                                            with patch("qtcli_gitrelease.release.run_live") as run_live:
                                                 release_repo(repo, message="release demo", confirm=lambda: True)
 
         self.assertTrue(seen_commands)
@@ -439,6 +443,32 @@ class WorkflowTests(TestCase):
         self.assertEqual("ssh", run_live.call_args_list[-1].args[0][0])
         self.assertIn("-O", run_live.call_args_list[-1].args[0])
         self.assertIn("exit", run_live.call_args_list[-1].args[0])
+
+    def test_github_release_explains_missing_target_repo(self) -> None:
+        repo = ResolvedRepo(
+            name="demo",
+            worktree=self.tmp_path / "packages" / "demo",
+            bare="git@github.com:owner/demo.git",
+            branch="master",
+            enabled=True,
+            send_include_paths=[],
+        )
+
+        class Proc:
+            def __init__(self, returncode: int, stdout: str = "", stderr: str = "") -> None:
+                self.returncode = returncode
+                self.stdout = stdout
+                self.stderr = stderr
+
+        with patch(
+            "qtcli_gitrelease.release.run",
+            side_effect=[
+                Proc(0),
+                Proc(128, stderr="ERROR: Repository not found.\n"),
+            ],
+        ):
+            with self.assertRaisesRegex(RuntimeError, "target repository was not found"):
+                _bootstrap_existing_github_history(repo)
 
     def test_remote_release_preview_cancellation_does_not_ssh(self) -> None:
         repo = ResolvedRepo(
@@ -453,7 +483,7 @@ class WorkflowTests(TestCase):
         )
         output = io.StringIO()
 
-        with patch("quantatier_gitrelease.release.run_live") as run_live:
+        with patch("qtcli_gitrelease.release.run_live") as run_live:
             with redirect_stdout(output):
                 release_repo(repo, message="release demo", confirm=lambda: False)
 
@@ -537,7 +567,7 @@ class WorkflowTests(TestCase):
         config = self.send_config()
         (self.tmp_path / "packages" / "demo" / "src").mkdir(parents=True)
 
-        with patch("quantatier_gitrelease.transfer.run_live") as run_live:
+        with patch("qtcli_gitrelease.transfer.run_live") as run_live:
             send_repo(config, self.repo(), target_name="10.0.0.2", confirm=lambda: False)
 
         run_live.assert_not_called()
@@ -547,7 +577,7 @@ class WorkflowTests(TestCase):
         (self.tmp_path / "packages" / "demo" / "src").mkdir(parents=True)
         output = io.StringIO()
 
-        with patch("quantatier_gitrelease.transfer.run_live") as run_live:
+        with patch("qtcli_gitrelease.transfer.run_live") as run_live:
             with redirect_stdout(output):
                 send_repo(config, self.repo(), target_name=None, confirm=lambda: False)
 
@@ -561,7 +591,7 @@ class WorkflowTests(TestCase):
         (self.tmp_path / "packages" / "demo" / "src").mkdir(parents=True)
         output = io.StringIO()
 
-        with patch("quantatier_gitrelease.transfer.run_live") as run_live:
+        with patch("qtcli_gitrelease.transfer.run_live") as run_live:
             with redirect_stdout(output):
                 send_repo(config, self.repo(), target_name="10.0.0.9", confirm=lambda: False)
 
@@ -574,7 +604,7 @@ class WorkflowTests(TestCase):
         config = self.send_config()
         (self.tmp_path / "packages" / "demo").mkdir(parents=True)
 
-        with patch("quantatier_gitrelease.transfer.run_live") as run_live:
+        with patch("qtcli_gitrelease.transfer.run_live") as run_live:
             with self.assertRaisesRegex(RuntimeError, "preflight failed"):
                 send_repo(config, self.repo(), target_name="10.0.0.2", confirm=lambda: True)
 
@@ -585,7 +615,7 @@ class WorkflowTests(TestCase):
         (self.tmp_path / "packages" / "demo" / "src").mkdir(parents=True)
         output = io.StringIO()
 
-        with patch("quantatier_gitrelease.transfer.run_live") as run_live:
+        with patch("qtcli_gitrelease.transfer.run_live") as run_live:
             with redirect_stdout(output):
                 send_repo(config, self.repo(), target_name="10.0.0.2", confirm=lambda: False)
 
@@ -614,7 +644,7 @@ class WorkflowTests(TestCase):
         (self.tmp_path / "packages" / "demo").mkdir(parents=True)
         output = io.StringIO()
 
-        with patch("quantatier_gitrelease.transfer.run_live") as run_live:
+        with patch("qtcli_gitrelease.transfer.run_live") as run_live:
             with redirect_stdout(output):
                 send_repo(config, repo, target_name="10.0.0.2", confirm=lambda: False)
 
@@ -627,7 +657,7 @@ class WorkflowTests(TestCase):
         config = self.send_config()
         (self.tmp_path / "packages" / "demo" / "src").mkdir(parents=True)
 
-        with patch("quantatier_gitrelease.transfer.run_live") as run_live:
+        with patch("qtcli_gitrelease.transfer.run_live") as run_live:
             send_repo(config, self.repo(), target_name="10.0.0.2", confirm=lambda: True)
 
         self.assertEqual(5, run_live.call_count)
@@ -674,7 +704,7 @@ class WorkflowTests(TestCase):
         config = self.rollback_config()
         (self.tmp_path / "packages" / "demo" / "src").mkdir(parents=True)
 
-        with patch("quantatier_gitrelease.transfer.run_live") as run_live:
+        with patch("qtcli_gitrelease.transfer.run_live") as run_live:
             rollback_repo(config, self.repo(), target_name="10.0.0.2", confirm=lambda: True)
 
         self.assertEqual(4, run_live.call_count)
@@ -691,7 +721,7 @@ class WorkflowTests(TestCase):
         config = self.local_rollback_config()
         (self.tmp_path / "packages" / "demo" / "src").mkdir(parents=True)
 
-        with patch("quantatier_gitrelease.transfer.run_live") as run_live:
+        with patch("qtcli_gitrelease.transfer.run_live") as run_live:
             rollback_repo(config, self.repo(), target_name="127.0.0.1", confirm=lambda: True)
 
         self.assertEqual(3, run_live.call_count)
@@ -704,7 +734,7 @@ class WorkflowTests(TestCase):
         config = self.rollback_config()
         (self.tmp_path / "packages" / "demo" / "src").mkdir(parents=True)
 
-        with patch("quantatier_gitrelease.transfer.run_live") as run_live:
+        with patch("qtcli_gitrelease.transfer.run_live") as run_live:
             rollback_repo(config, self.repo(), target_name=None, confirm=lambda: True)
 
         self.assertEqual(4, run_live.call_count)

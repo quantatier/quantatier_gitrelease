@@ -1,11 +1,13 @@
-# gitrelease
+# quantatier_gitrelease
 
 Source transfer and Git release CLI for multi-machine development workflows.
 
-The primary command is `gitrelease`. The distribution package is
-`quantatier-gitrelease`, and the Python import package is
-`quantatier_gitrelease`. The historical command `qtcli_gitrelease` is kept as a
-compatibility alias for existing local automation.
+The GitHub repository is `quantatier/quantatier_gitrelease`. The primary
+command is `gitrelease`. The distribution package is `quantatier-gitrelease`,
+and the Python import package remains
+`qtcli_gitrelease` to match the local Quantatier project layout. The historical
+command `qtcli_gitrelease` is kept as a compatibility alias for existing local
+automation.
 
 ## Workflows
 

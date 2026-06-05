@@ -207,7 +207,7 @@ def _print_github_key_setup_help(key_path: Path) -> None:
 
 def _bootstrap_existing_github_history(repo: ResolvedRepo) -> None:
     has_head = run(["git", "rev-parse", "--verify", "HEAD"], cwd=repo.worktree, check=False)
-    run_live(["git", "fetch", "origin", "--tags", "--prune"], cwd=repo.worktree)
+    _fetch_github_origin_or_explain(repo)
 
     if has_head.returncode == 0:
         return
@@ -222,6 +222,34 @@ def _bootstrap_existing_github_history(repo: ResolvedRepo) -> None:
         run_live(["git", "checkout", "-B", repo.branch, remote_branch], cwd=repo.worktree)
     else:
         run_live(["git", "checkout", "-B", repo.branch], cwd=repo.worktree)
+
+
+def _fetch_github_origin_or_explain(repo: ResolvedRepo) -> None:
+    cmd = ["git", "fetch", "origin", "--tags", "--prune"]
+    print(f"$ {' '.join(cmd)}")
+    proc = run(cmd, cwd=repo.worktree, check=False)
+    if proc.returncode == 0:
+        return
+
+    text = f"{proc.stdout or ''}\n{proc.stderr or ''}"
+    if "Repository not found" in text:
+        raise RuntimeError(
+            "GitHub SSH auth works, but the target repository was not found.\n"
+            f"Target: {repo.bare}\n\n"
+            "This usually means the GitHub account/org exists but this repo has not "
+            "been created yet, or the repo name changed.\n\n"
+            "Create an empty GitHub repository with this exact name and no README, "
+            ".gitignore, or license, then run release again.\n"
+            "Alternatively, fix config/release_github.json target_repo_path if the "
+            "repo already exists under a different name."
+        )
+
+    raise RuntimeError(
+        "Could not fetch GitHub target before release.\n"
+        f"Target: {repo.bare}\n"
+        f"stdout:\n{proc.stdout or ''}\n"
+        f"stderr:\n{proc.stderr or ''}"
+    )
 
 
 def release_repo_remote(

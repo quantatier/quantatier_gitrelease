@@ -4,22 +4,25 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quantatier-gitrelease"
-version = "0.0.8"
+version = "0.0.9"
 description = "Source transfer and Git release CLI for multi-machine development workflows"
 readme = "README.md"
 requires-python = ">=3.10"
+authors = [
+    { name = "Adrian Chen" },
+]
 dependencies = [
     "tomli>=2.0.0; python_version < '3.11'",
     "typer>=0.12.0",
 ]
 
 [project.scripts]
-gitrelease = "quantatier_gitrelease.cli:app"
-quantatier-gitrelease = "quantatier_gitrelease.cli:app"
-qtcli_gitrelease = "quantatier_gitrelease.cli:app"
+gitrelease = "qtcli_gitrelease.cli:app"
+quantatier-gitrelease = "qtcli_gitrelease.cli:app"
+qtcli_gitrelease = "qtcli_gitrelease.cli:app"
 
 [tool.setuptools.packages.find]
-include = ["quantatier_gitrelease*"]
+include = ["qtcli_gitrelease*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
