@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 
-HISTORY_DIR = ".qtcli_gitrelease"
+HISTORY_DIR = ".gitrelease"
 HISTORY_FILE = "history.jsonl"
 
 

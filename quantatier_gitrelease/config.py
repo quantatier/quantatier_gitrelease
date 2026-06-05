@@ -8,7 +8,7 @@ from typing import Any
 from .models import RepoConfig, ResolvedRepo
 
 
-DEFAULT_CONFIG_DIR = Path.home() / ".config" / "qtcli_gitrelease"
+DEFAULT_CONFIG_DIR = Path.home() / ".config" / "gitrelease"
 DEFAULT_SEND_CONFIG_PATH = DEFAULT_CONFIG_DIR / "send.json"
 DEFAULT_ROLLBACK_CONFIG_PATH = DEFAULT_CONFIG_DIR / "rollback.json"
 DEFAULT_RELEASE_CONFIG_PATH = DEFAULT_CONFIG_DIR / "release.json"

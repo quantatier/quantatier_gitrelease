@@ -35,7 +35,10 @@ ADDRESS_HINT = _address_hint()
 
 app = typer.Typer(
     help=(
-        "qtcli_gitrelease: source send and Git release CLI\n\n"
+        "gitrelease: source transfer and Git release CLI\n\n"
+        "Primary command: gitrelease\n"
+        "Distribution package: quantatier-gitrelease\n"
+        "Compatibility command: qtcli_gitrelease\n\n"
         f"{ADDRESS_HINT}"
     )
 )
@@ -60,7 +63,7 @@ def _resolve_release_repos(
 @app.command(
     help=(
         "Send selected source paths to a remote target.\n\n"
-        "Syntax: qtcli_gitrelease send --repo <repo> on <executor> to <address>\n\n"
+        "Syntax: gitrelease send --repo <repo> on <executor> to <address>\n\n"
         "This command does not send .git and does not commit or push.\n\n"
         f"{ADDRESS_HINT}"
     )
@@ -104,7 +107,7 @@ def send(
 @app.command(
     help=(
         "Ask a target to reset its worktree to the recorded rollback commit.\n\n"
-        "Syntax: qtcli_gitrelease rollback --repo <repo> on <address>\n\n"
+        "Syntax: gitrelease rollback --repo <repo> on <address>\n\n"
         "It does not push and does not update the bare repo.\n\n"
         f"{ADDRESS_HINT}"
     )
@@ -171,11 +174,11 @@ def _set_endpoint_address(config: dict, key: str, address: str) -> None:
 @app.command(
     help=(
         "Run add -> commit -> push -> tag from pyproject version -> push tag.\n\n"
-        "Syntax: qtcli_gitrelease release --repo <repo> on <address> to <address>\n\n"
+        "Syntax: gitrelease release --repo <repo> on <address> to <address>\n\n"
         "Local executor to configured bare repo:\n"
-        "  qtcli_gitrelease release --repo <repo> on local to local -m \"release <repo>\"\n\n"
+        "  gitrelease release --repo <repo> on local to local -m \"release <repo>\"\n\n"
         "Local executor to GitHub:\n"
-        "  qtcli_gitrelease release --repo <repo> on local to github -m \"release <repo>\"\n"
+        "  gitrelease release --repo <repo> on local to github -m \"release <repo>\"\n"
         "  GitHub release reads config/release_github.json.\n"
         "  Set target.github_username before using it.\n"
         "  The local project must already be a Git repo.\n"
@@ -187,7 +190,7 @@ def _set_endpoint_address(config: dict, key: str, address: str) -> None:
         "  It may initialize .git, set origin, set local Git identity, generate a key,\n"
         "  print setup instructions, and recheck GitHub SSH auth in a loop.\n\n"
         "Remote executor to GitHub:\n"
-        "  qtcli_gitrelease release --repo <repo> on main_devbox to github -m \"release <repo>\"\n"
+        "  gitrelease release --repo <repo> on main_devbox to github -m \"release <repo>\"\n"
         "  This SSHes to the executor and uses that machine's source tree and config.\n\n"
         "pyproject.toml version must not start with v/V.\n"
         "Git tag is generated as v{version}.\n\n"
@@ -266,7 +269,7 @@ def _run_release_on_remote_executor(
         )
 
     remote_cmd = [
-        "qtcli_gitrelease",
+        "gitrelease",
         "release",
         "--repo",
         repo,
@@ -292,7 +295,7 @@ def _run_send_on_remote_executor(
         config,
         executor_address,
         [
-            "qtcli_gitrelease",
+            "gitrelease",
             "send",
             "--repo",
             repo,

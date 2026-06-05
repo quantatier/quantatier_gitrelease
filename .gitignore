@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 
 # Runtime state and operation history.
+.gitrelease/
 .qtcli_gitrelease/
 
 # Local configuration is machine-specific and must not be released.

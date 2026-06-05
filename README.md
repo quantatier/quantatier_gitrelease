@@ -1,7 +1,11 @@
-# qtcli_gitrelease
+# gitrelease
 
-Internal CLI for selective source transfer and Git release operations across
-Quantatier repositories.
+Source transfer and Git release CLI for multi-machine development workflows.
+
+The primary command is `gitrelease`. The distribution package is
+`quantatier-gitrelease`, and the Python import package is
+`quantatier_gitrelease`. The historical command `qtcli_gitrelease` is kept as a
+compatibility alias for existing local automation.
 
 ## Workflows
 
@@ -56,22 +60,22 @@ formal config files under `config/`.
 Successful operations write a small project-local history record:
 
 ```text
-<repo root>/.qtcli_gitrelease/history.jsonl
+<repo root>/.gitrelease/history.jsonl
 ```
 
 The file uses one compact JSON object per line. It records only the operation
 type, repo name, target address/root, key commit or tag, result, and timestamp.
 It does not store passwords, command transcripts, or per-file transfer details.
-The `.qtcli_gitrelease/` directory is excluded from source transfer and should
+The `.gitrelease/` directory is excluded from source transfer and should
 stay ignored by Git.
 
-Install the project in editable mode. The `qtcli_gitrelease` command then loads
-the development source tree directly:
+Install the project in editable mode. The `gitrelease` command then loads the
+development source tree directly:
 
 ```bash
-cd /path/to/workspace/packages/qtcli_gitrelease
+cd /path/to/workspace/packages/gitrelease
 python -m pip install -e .
-qtcli_gitrelease --help
+gitrelease --help
 ```
 
 When installed in editable mode, the CLI reads formal config files such as
@@ -79,14 +83,14 @@ When installed in editable mode, the CLI reads formal config files such as
 source tree first, no matter which project directory your terminal is currently
 in. If a formal config file is absent, it can read the corresponding
 `*.example.json` template so help and examples remain inspectable. If no package
-source config is present, it falls back to `~/.config/qtcli_gitrelease/*.json`.
+source config is present, it falls back to `~/.config/gitrelease/*.json`.
 
 ## Editor Workflow
 
 Run the editor-side source transfer command:
 
 ```bash
-qtcli_gitrelease send --repo qtcli_gitrelease on local to main_devbox
+gitrelease send --repo example_project on local to main_devbox
 ```
 
 The command validates the local workspace, target workspace path, and SSH
@@ -106,7 +110,7 @@ Before each confirmed send, the CLI records one remote rollback pointer: the
 current `HEAD` commit of the remote worktree.
 
 ```text
-~/.qtcli_gitrelease/send_rollback/<repo>/latest_commit
+~/.gitrelease/send_rollback/<repo>/latest_commit
 ```
 
 Only the latest pointer is kept; the next confirmed send overwrites it. Rollback
@@ -115,7 +119,7 @@ the remote target. It does not push and does not update the bare repo. To restor
 the remote worktree to the recorded commit:
 
 ```bash
-qtcli_gitrelease rollback --repo qtcli_gitrelease on main_devbox
+gitrelease rollback --repo example_project on main_devbox
 ```
 
 `rollback` is started from the current machine, but the reset happens on the
@@ -124,7 +128,7 @@ SSH as `target.ssh_user@address`. If the address is local, rollback runs against
 the local target path.
 
 ```bash
-qtcli_gitrelease rollback --repo qtcli_gitrelease on main_devbox
+gitrelease rollback --repo example_project on main_devbox
 ```
 
 ## Release Workflow
@@ -132,21 +136,21 @@ qtcli_gitrelease rollback --repo qtcli_gitrelease on main_devbox
 For local release, run:
 
 ```bash
-qtcli_gitrelease release --repo qtcli_gitrelease on local to local -m "release qtcli_gitrelease"
+gitrelease release --repo example_project on local to local -m "release example_project"
 ```
 
 For release from a remote executor to a remote or local bare repo target, run:
 
 ```bash
-qtcli_gitrelease release --repo qtcli_gitrelease on main_devbox to bare_repo_host -m "release qtcli_gitrelease"
+gitrelease release --repo example_project on main_devbox to bare_repo_host -m "release example_project"
 ```
 
 For release to GitHub, set `target.github_username` in
 `config/release_github.json`. The config builds the GitHub remote URL as
-`git@github.com:{github_username}/qtcli_gitrelease.git`. Use `to github`:
+`git@github.com:{github_username}/example_project.git`. Use `to github`:
 
 ```bash
-qtcli_gitrelease release --repo qtcli_gitrelease on local to github -m "release qtcli_gitrelease"
+gitrelease release --repo example_project on local to github -m "release example_project"
 ```
 
 When `to github` is used, the command runs a setup helper before release. It can
@@ -162,7 +166,7 @@ To trigger a main development box from another machine and let that box push
 its own code to GitHub:
 
 ```bash
-qtcli_gitrelease release --repo qtcli_gitrelease on main_devbox to github -m "release qtcli_gitrelease"
+gitrelease release --repo example_project on main_devbox to github -m "release example_project"
 ```
 
 `release` validates the Git worktree, rejects behind or diverged branches, and

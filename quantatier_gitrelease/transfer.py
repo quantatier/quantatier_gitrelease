@@ -24,13 +24,13 @@ DEFAULT_EXCLUDES = [
     ".DS_Store",
     ".ipynb_checkpoints/",
     ".vntrader/",
-    ".qtcli_gitrelease/",
+    ".gitrelease/",
     "dist/",
     "build/",
     "BacktestingResult/",
     "*.egg-info/",
 ]
-ROLLBACK_ROOT = "~/.qtcli_gitrelease/send_rollback"
+ROLLBACK_ROOT = "~/.gitrelease/send_rollback"
 PROTECTED_PATH_PARTS = {
     ".git",
     ".venv",
@@ -38,7 +38,7 @@ PROTECTED_PATH_PARTS = {
     ".DS_Store",
     ".ipynb_checkpoints",
     ".vntrader",
-    ".qtcli_gitrelease",
+    ".gitrelease",
     "__pycache__",
     ".pytest_cache",
     ".mypy_cache",

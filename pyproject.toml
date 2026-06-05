@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "qtcli_gitrelease"
-version = "0.0.7"
-description = "Internal source send and Git release CLI for Quantatier projects"
+name = "quantatier-gitrelease"
+version = "0.0.8"
+description = "Source transfer and Git release CLI for multi-machine development workflows"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -14,10 +14,12 @@ dependencies = [
 ]
 
 [project.scripts]
-qtcli_gitrelease = "qtcli_gitrelease.cli:app"
+gitrelease = "quantatier_gitrelease.cli:app"
+quantatier-gitrelease = "quantatier_gitrelease.cli:app"
+qtcli_gitrelease = "quantatier_gitrelease.cli:app"
 
 [tool.setuptools.packages.find]
-include = ["qtcli_gitrelease*"]
+include = ["quantatier_gitrelease*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

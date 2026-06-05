@@ -313,7 +313,7 @@ def _build_remote_release_command(repo: ResolvedRepo, message: str) -> list[str]
         "git -C \"$worktree\" push origin \"$tag\"; "
         "{ "
         "commit=$(git -C \"$worktree\" rev-parse HEAD); "
-        "history_dir=\"$worktree/.qtcli_gitrelease\"; "
+        "history_dir=\"$worktree/.gitrelease\"; "
         "mkdir -p \"$history_dir\"; "
         "time_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ); "
         "printf '{\"action\":\"release\",\"branch\":\"%s\",\"commit\":\"%s\",\"repo_name\":\"%s\",\"result\":\"success\",\"tag\":\"%s\",\"target_address\":\"%s\",\"target_root\":\"%s\",\"time\":\"%s\"}\\n' "
