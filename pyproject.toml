@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quantatier-gitrelease"
-version = "0.0.9"
+version = "0.0.10"
 description = "Source transfer and Git release CLI for multi-machine development workflows"
 readme = "README.md"
 requires-python = ">=3.10"

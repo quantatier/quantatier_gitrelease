@@ -20,6 +20,7 @@ from qtcli_gitrelease.models import RepoConfig, ResolvedRepo
 from qtcli_gitrelease.release import (
     _bootstrap_existing_github_history,
     _build_remote_release_command,
+    release_github_repo,
     release_repo,
 )
 from qtcli_gitrelease.transfer import (
@@ -469,6 +470,40 @@ class WorkflowTests(TestCase):
         ):
             with self.assertRaisesRegex(RuntimeError, "target repository was not found"):
                 _bootstrap_existing_github_history(repo)
+
+    def test_github_release_pushes_local_head_to_configured_github_branch(self) -> None:
+        repo = ResolvedRepo(
+            name="demo",
+            worktree=self.tmp_path / "packages" / "demo",
+            bare="git@github.com:owner/demo.git",
+            branch="main",
+            enabled=True,
+            send_include_paths=[],
+        )
+
+        with patch("qtcli_gitrelease.release.read_pyproject_version", return_value="1.2.3"):
+            with patch("qtcli_gitrelease.release.current_branch", return_value="master"):
+                with patch("qtcli_gitrelease.release.is_git_worktree", return_value=True):
+                    with patch("qtcli_gitrelease.release.origin_url", return_value=repo.bare):
+                        with patch("qtcli_gitrelease.release._fetch_github_origin_or_explain"):
+                            with patch("qtcli_gitrelease.release.ahead_behind", return_value=(0, 0)):
+                                with patch("qtcli_gitrelease.release.ensure_tag_not_exists"):
+                                    with patch("qtcli_gitrelease.release.commit_if_needed"):
+                                        with patch("qtcli_gitrelease.release.create_and_push_tag"):
+                                            with patch("qtcli_gitrelease.release.append_local_history"):
+                                                with patch("qtcli_gitrelease.release.output", return_value="abc123"):
+                                                    with patch("qtcli_gitrelease.release.run_live") as run_live:
+                                                        repo.worktree.mkdir(parents=True)
+                                                        release_github_repo(
+                                                            repo,
+                                                            message="release demo",
+                                                            confirm=lambda: True,
+                                                        )
+
+        self.assertIn(
+            ["git", "push", "origin", "HEAD:main"],
+            [call.args[0] for call in run_live.call_args_list],
+        )
 
     def test_remote_release_preview_cancellation_does_not_ssh(self) -> None:
         repo = ResolvedRepo(

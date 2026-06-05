@@ -9,8 +9,10 @@ from typing import Callable
 from urllib.parse import urlparse
 
 from .git_ops import (
+    ahead_behind,
     commit_if_needed,
     create_and_push_tag,
+    current_branch,
     ensure_not_behind_or_diverged,
     ensure_repo_valid,
     ensure_tag_not_exists,
@@ -26,6 +28,9 @@ from .transfer import _build_close_ssh_connection_command, _ssh_connection_reuse
 from .versioning import read_pyproject_version, version_to_tag
 
 
+GITHUB_LOCAL_BRANCH = "master"
+
+
 def release_repo(
     repo: ResolvedRepo,
     message: str | None = None,
@@ -33,6 +38,10 @@ def release_repo(
 ) -> None:
     if repo.ssh_address:
         release_repo_remote(repo, message=message, confirm=confirm)
+        return
+
+    if _is_github_bare(repo.bare):
+        release_github_repo(repo, message=message, confirm=confirm)
         return
 
     version = read_pyproject_version(repo.worktree)
@@ -86,6 +95,106 @@ def release_repo(
     print(f"Release complete: {repo.name} {tag}")
 
 
+def release_github_repo(
+    repo: ResolvedRepo,
+    message: str | None = None,
+    confirm: Callable[[], bool] | None = None,
+) -> None:
+    version = read_pyproject_version(repo.worktree)
+    tag = version_to_tag(version)
+    release_message = message or f"release {repo.name} {tag}"
+    local_branch = current_branch(repo.worktree)
+
+    print("=" * 80)
+    print(f"GitHub release repo: {repo.name}")
+    print(f"Local git root:      {repo.worktree}")
+    print(f"Local branch:        {local_branch or 'detached HEAD'}")
+    print(f"GitHub target:       {repo.bare}")
+    print(f"GitHub branch:       {repo.branch}")
+    print("Scope:               entire Git repo; partial release is not allowed")
+    print(f"Version:             {version}")
+    print(f"Tag:                 {tag}")
+    print(f"Commit message:      {release_message}")
+    print("Push mapping:        local HEAD -> GitHub branch")
+    print("=" * 80)
+    sys.stdout.flush()
+
+    _ensure_github_worktree_valid(repo)
+    _ensure_github_target_not_ahead_or_diverged(repo)
+
+    if confirm is not None and not confirm():
+        print("Release cancelled.")
+        return
+
+    ensure_tag_not_exists(repo, tag)
+    commit_if_needed(repo, release_message)
+    _push_github_branch(repo)
+    create_and_push_tag(repo, tag, release_message)
+    try:
+        append_local_history(
+            repo.worktree,
+            history_record(
+                "release",
+                repo.name,
+                target_address="github",
+                target_root=repo.bare,
+                branch=f"{local_branch or 'HEAD'}->{repo.branch}",
+                commit=output(["git", "rev-parse", "HEAD"], cwd=repo.worktree),
+                tag=tag,
+                result="success",
+            ),
+        )
+    except OSError:
+        print("History record failed; the release had already completed.")
+
+    print(f"Release complete: {repo.name} {tag}")
+
+
+def _ensure_github_worktree_valid(repo: ResolvedRepo) -> None:
+    if not repo.worktree.exists():
+        raise RuntimeError(f"worktree not found: {repo.worktree}")
+
+    if not is_git_worktree(repo.worktree):
+        raise RuntimeError(f"not a Git worktree: {repo.worktree}")
+
+    origin = origin_url(repo.worktree)
+    if not origin:
+        raise RuntimeError("origin is not configured")
+
+    if origin != repo.bare:
+        raise RuntimeError(f"origin mismatch: expected {repo.bare}, actual {origin}")
+
+    branch = current_branch(repo.worktree)
+    if not branch:
+        raise RuntimeError("detached HEAD")
+
+
+def _ensure_github_target_not_ahead_or_diverged(repo: ResolvedRepo) -> None:
+    _fetch_github_origin_or_explain(repo)
+    ahead, behind = ahead_behind(repo.worktree, repo.branch)
+
+    if behind > 0 and ahead == 0:
+        raise RuntimeError(
+            f"{repo.name} is behind GitHub {repo.branch} by {behind} commit(s).\n\n"
+            f"Run:\n"
+            f"  cd {repo.worktree}\n"
+            f"  git pull --rebase origin {repo.branch}\n\n"
+            f"Then retry."
+        )
+
+    if ahead > 0 and behind > 0:
+        raise RuntimeError(
+            f"{repo.name} has diverged from GitHub {repo.branch}.\n\n"
+            f"Local ahead: {ahead}\n"
+            f"GitHub ahead: {behind}\n\n"
+            f"Resolve manually before release."
+        )
+
+
+def _push_github_branch(repo: ResolvedRepo) -> None:
+    run_live(["git", "push", "origin", f"HEAD:{repo.branch}"], cwd=repo.worktree)
+
+
 def prepare_github_release_repo(
     repo: ResolvedRepo,
     confirm: Callable[[str], bool],
@@ -98,7 +207,8 @@ def prepare_github_release_repo(
     print(f"GitHub release setup: {repo.name}")
     print(f"Local git root:       {repo.worktree}")
     print(f"GitHub target:        {repo.bare}")
-    print(f"Branch:               {repo.branch}")
+    print(f"Local branch:         {GITHUB_LOCAL_BRANCH}")
+    print(f"GitHub branch:        {repo.branch}")
     print("This setup may initialize .git, set origin, and set local Git identity.")
     print("SSH private keys and GitHub passwords are never stored in this project.")
     print("=" * 80)
@@ -109,7 +219,7 @@ def prepare_github_release_repo(
     if not is_git_worktree(repo.worktree):
         if not confirm(f"Initialize Git repo at {repo.worktree}?"):
             raise RuntimeError("GitHub release setup cancelled.")
-        run_live(["git", "init", "-b", repo.branch], cwd=repo.worktree)
+        run_live(["git", "init", "-b", GITHUB_LOCAL_BRANCH], cwd=repo.worktree)
 
     current_origin = origin_url(repo.worktree)
     if not current_origin:
@@ -219,9 +329,9 @@ def _bootstrap_existing_github_history(repo: ResolvedRepo) -> None:
         check=False,
     )
     if remote_exists.returncode == 0:
-        run_live(["git", "checkout", "-B", repo.branch, remote_branch], cwd=repo.worktree)
+        run_live(["git", "checkout", "-B", GITHUB_LOCAL_BRANCH, remote_branch], cwd=repo.worktree)
     else:
-        run_live(["git", "checkout", "-B", repo.branch], cwd=repo.worktree)
+        run_live(["git", "checkout", "-B", GITHUB_LOCAL_BRANCH], cwd=repo.worktree)
 
 
 def _fetch_github_origin_or_explain(repo: ResolvedRepo) -> None:
