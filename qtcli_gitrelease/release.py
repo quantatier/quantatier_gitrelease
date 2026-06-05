@@ -127,9 +127,10 @@ def release_github_repo(
         return
 
     ensure_tag_not_exists(repo, tag)
+    _preflight_github_push(repo)
     commit_if_needed(repo, release_message)
     _push_github_branch(repo)
-    create_and_push_tag(repo, tag, release_message)
+    _create_and_push_github_tag(repo, tag, release_message)
     try:
         append_local_history(
             repo.worktree,
@@ -192,7 +193,56 @@ def _ensure_github_target_not_ahead_or_diverged(repo: ResolvedRepo) -> None:
 
 
 def _push_github_branch(repo: ResolvedRepo) -> None:
-    run_live(["git", "push", "origin", f"HEAD:{repo.branch}"], cwd=repo.worktree)
+    proc = run_live(
+        ["git", "push", "origin", f"HEAD:{repo.branch}"],
+        cwd=repo.worktree,
+        check=False,
+    )
+    if proc.returncode == 0:
+        return
+
+    raise RuntimeError(
+        "GitHub branch push failed after the local release commit was created.\n\n"
+        "Do not run release again before checking the state. To continue this "
+        "release, fix SSH/GitHub access and run:\n"
+        f"  cd {repo.worktree}\n"
+        f"  git push origin HEAD:{repo.branch}\n\n"
+        "After that succeeds, create and push the release tag if it does not "
+        "already exist."
+    )
+
+
+def _preflight_github_push(repo: ResolvedRepo) -> None:
+    print("Checking GitHub push permission before creating the local release commit.")
+    proc = run_live(
+        ["git", "push", "--dry-run", "origin", f"HEAD:{repo.branch}"],
+        cwd=repo.worktree,
+        check=False,
+    )
+    if proc.returncode == 0:
+        return
+
+    raise RuntimeError(
+        "GitHub push permission check failed before creating a local release "
+        "commit.\n\n"
+        "Fix SSH/GitHub access and retry release. No new release commit was "
+        "created by this failed attempt."
+    )
+
+
+def _create_and_push_github_tag(repo: ResolvedRepo, tag: str, message: str) -> None:
+    run_live(["git", "tag", "-a", tag, "-m", message], cwd=repo.worktree)
+    proc = run_live(["git", "push", "origin", tag], cwd=repo.worktree, check=False)
+    if proc.returncode == 0:
+        return
+
+    raise RuntimeError(
+        "GitHub tag push failed after the branch push completed.\n\n"
+        "Do not run release again before checking the state. To continue this "
+        "release, fix SSH/GitHub access and run:\n"
+        f"  cd {repo.worktree}\n"
+        f"  git push origin {tag}"
+    )
 
 
 def prepare_github_release_repo(

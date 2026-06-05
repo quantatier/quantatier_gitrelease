@@ -493,6 +493,7 @@ class WorkflowTests(TestCase):
                                             with patch("qtcli_gitrelease.release.append_local_history"):
                                                 with patch("qtcli_gitrelease.release.output", return_value="abc123"):
                                                     with patch("qtcli_gitrelease.release.run_live") as run_live:
+                                                        run_live.return_value.returncode = 0
                                                         repo.worktree.mkdir(parents=True)
                                                         release_github_repo(
                                                             repo,
@@ -504,6 +505,44 @@ class WorkflowTests(TestCase):
             ["git", "push", "origin", "HEAD:main"],
             [call.args[0] for call in run_live.call_args_list],
         )
+
+    def test_github_release_preflight_failure_happens_before_commit(self) -> None:
+        repo = ResolvedRepo(
+            name="demo",
+            worktree=self.tmp_path / "packages" / "demo",
+            bare="git@github.com:owner/demo.git",
+            branch="main",
+            enabled=True,
+            send_include_paths=[],
+        )
+
+        class Proc:
+            def __init__(self, returncode: int) -> None:
+                self.returncode = returncode
+
+        def fake_run_live(command, *_args, **_kwargs):
+            if command == ["git", "push", "--dry-run", "origin", "HEAD:main"]:
+                return Proc(1)
+            return Proc(0)
+
+        with patch("qtcli_gitrelease.release.read_pyproject_version", return_value="1.2.3"):
+            with patch("qtcli_gitrelease.release.current_branch", return_value="master"):
+                with patch("qtcli_gitrelease.release.is_git_worktree", return_value=True):
+                    with patch("qtcli_gitrelease.release.origin_url", return_value=repo.bare):
+                        with patch("qtcli_gitrelease.release._fetch_github_origin_or_explain"):
+                            with patch("qtcli_gitrelease.release.ahead_behind", return_value=(0, 0)):
+                                with patch("qtcli_gitrelease.release.ensure_tag_not_exists"):
+                                    with patch("qtcli_gitrelease.release.commit_if_needed") as commit:
+                                        with patch("qtcli_gitrelease.release.run_live", side_effect=fake_run_live):
+                                            repo.worktree.mkdir(parents=True)
+                                            with self.assertRaisesRegex(RuntimeError, "before creating"):
+                                                release_github_repo(
+                                                    repo,
+                                                    message="release demo",
+                                                    confirm=lambda: True,
+                                                )
+
+        commit.assert_not_called()
 
     def test_remote_release_preview_cancellation_does_not_ssh(self) -> None:
         repo = ResolvedRepo(
